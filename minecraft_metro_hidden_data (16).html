@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Minecraft Metro Planner</title>
+  <style>
+    body,html{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;display:flex;justify-content:center;align-items:center;background:#f0f2f5}
+    #app{width:400px;background:#fff;border:1px solid #ddd;padding:20px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.1);}
+    h2{margin:0 0 12px;text-align:center;color:#2c7bcd}
+    select,button{width:100%;padding:10px;margin:8px 0;box-sizing:border-box;border-radius:6px;border:1px solid #ccc;font-size:16px}
+    button{background:#2c7bcd;color:#fff;border:none;cursor:pointer;transition:0.2s}
+    button:hover{background:#1b5fa7}
+    .route-result{background:#f9f9f9;padding:10px;border-radius:8px;margin-top:12px;border-left:4px solid #2c7bcd}
+    .transfer{color:#ff8c00;font-weight:bold}
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h2>Minecraft Metro Planner</h2>
+    <label>Van:</label>
+    <select id="fromSelect"></select>
+    <label>Naar:</label>
+    <select id="toSelect"></select>
+    <button id="planBtn">Plan Route</button>
+    <div id="routeOutput"></div>
+  </div>
+
+  <script>
+    const stations = ['Centrum','Baais','Masal','Elias','Silas','Brug'];
+
+    // Lijnen met namen, inclusief directe lijnen naar Centrum per station
+    const lines = [
+      {id:'L1', name:'Bases', stations:['Baais','Masal','Elias','Silas']},
+      {id:'L2', name:'Brug', stations:['Centrum','Brug']},
+      {id:'L3', name:'Centrum', stations:['Masal','Centrum']},
+      {id:'L4', name:'Centrum', stations:['Elias','Centrum']},
+      {id:'L5', name:'Centrum', stations:['Silas','Centrum']}
+    ];
+
+    function refreshLists(){
+      const from = document.getElementById('fromSelect');
+      const to = document.getElementById('toSelect');
+      from.innerHTML=''; to.innerHTML='';
+      stations.forEach(s=>{
+        const o1=document.createElement('option'); o1.value=s; o1.textContent=s;
+        const o2=o1.cloneNode(true);
+        from.appendChild(o1); to.appendChild(o2);
+      });
+    }
+
+    function buildGraph(){
+      const adj={};
+      stations.forEach(s=>adj[s]=[]);
+      // Prioriteit aan lijnen met meerdere stations
+      const sortedLines = [...lines].sort((a,b)=>b.stations.length - a.stations.length);
+      sortedLines.forEach(ln=>{
+        for(let i=0;i<ln.stations.length-1;i++){
+          const a=ln.stations[i],b=ln.stations[i+1];
+          adj[a].push({station:b,line:ln.id,lineName:ln.name});
+          adj[b].push({station:a,line:ln.id,lineName:ln.name});
+        }
+      });
+      return adj;
+    }
+
+    // Functie om direct verbinding te checken
+    function hasDirectLine(start,end){
+      for(const ln of lines){
+        for(let i=0;i<ln.stations.length-1;i++){
+          if((ln.stations[i]===start && ln.stations[i+1]===end) || (ln.stations[i]===end && ln.stations[i+1]===start)){
+            return {line:ln.id,lineName:ln.name,stations:[start,end]};
+          }
+        }
+      }
+      return null;
+    }
+
+    function findRoute(start, goal){
+      // Eerst check direct verbinding
+      const direct = hasDirectLine(start,goal);
+      if(direct) return {path:direct.stations, lines:[direct.line]};
+
+      // Anders BFS
+      const graph = buildGraph();
+      const queue = [{station:start,path:[start],lines:[]}];
+      const visited = new Set([start]);
+      while(queue.length){
+        const cur = queue.shift();
+        if(cur.station===goal) return cur;
+        for(const nb of graph[cur.station]){
+          if(!visited.has(nb.station)){
+            visited.add(nb.station);
+            const newPath = [...cur.path, nb.station];
+            const newLines = [...cur.lines];
+            if(newLines.length===0 || newLines[newLines.length-1]!==nb.line) newLines.push(nb.line);
+            queue.push({station:nb.station,path:newPath,lines:newLines});
+          }
+        }
+      }
+      return null;
+    }
+
+    function planRoute(path){
+      if(!path) return '<div class="route-result">Geen route gevonden.</div>';
+      const graph = buildGraph();
+      let html = '<b>Route:</b><br>';
+      let segmentStations = [path[0]];
+      let currentLine = null;
+
+      for(let i=0;i<path.length-1;i++){
+        const from = path[i];
+        const to = path[i+1];
+        const edge = graph[from].find(e=>e.station===to);
+        if(!edge) return '<div class="route-result">HARDE L, ZOEK BETER LIL BRO.</div>';
+        const line = edge.line;
+        const lineName = edge.lineName;
+
+        if(currentLine && currentLine!==line){
+          html += segmentStations.join(' → ') + ` <span class="transfer">(Overstap naar ${lineName})</span><br>`;
+          segmentStations = [from, to];
+        } else {
+          segmentStations.push(to);
+        }
+        currentLine = line;
+      }
+      html += segmentStations.join(' → ') + '<br>';
+      return '<div class="route-result">'+html+'</div>';
+    }
+
+    document.getElementById('planBtn').addEventListener('click',()=>{
+      const from = document.getElementById('fromSelect').value;
+      const to = document.getElementById('toSelect').value;
+      const pathObj = findRoute(from,to);
+      const output = pathObj ? pathObj.path : null;
+      document.getElementById('routeOutput').innerHTML = planRoute(output);
+    });
+
+    refreshLists();
+  </script>
+</body>
+</html>
