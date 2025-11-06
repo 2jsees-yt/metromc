@@ -4,17 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Minecraft Metro Planner</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <style>
     body,html{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;display:flex;justify-content:center;align-items:center;background:#f0f2f5}
-    #app{width:400px;background:#fff;border:1px solid #ddd;padding:20px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.1);position:relative;}
+    #app{width:400px;background:#fff;border:1px solid #ddd;padding:20px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.1);}
     h2{margin:0 0 12px;text-align:center;color:#2c7bcd}
     select,button{width:100%;padding:10px;margin:8px 0;box-sizing:border-box;border-radius:6px;border:1px solid #ccc;font-size:16px}
     button{background:#2c7bcd;color:#fff;border:none;cursor:pointer;transition:0.2s}
     button:hover{background:#1b5fa7}
     .route-result{background:#f9f9f9;padding:10px;border-radius:8px;margin-top:12px;border-left:4px solid #2c7bcd}
     .transfer{color:#ff8c00;font-weight:bold}
-    #map{position:absolute;bottom:10px;right:10px;width:150px;height:150px;border:1px solid #ccc;z-index:1000;}
   </style>
 </head>
 <body>
@@ -26,10 +24,8 @@
     <select id="toSelect"></select>
     <button id="planBtn">Plan Route</button>
     <div id="routeOutput"></div>
-    <div id="map"></div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const stations = ['Centrum','Baais','Masal','Elias','Silas','Brug'];
 
@@ -132,34 +128,9 @@
       const pathObj = findRoute(from,to);
       const output = pathObj ? pathObj.path : null;
       document.getElementById('routeOutput').innerHTML = planRoute(output);
-      updateMap(pathObj ? pathObj.path : []);
     });
 
     refreshLists();
-
-    const map = L.map('map',{crs:L.CRS.Simple,minZoom:-5,maxZoom:5,zoomControl:false,attributionControl:false});
-    const bounds=[[ -1000, -1000],[1000,1000]];
-    L.rectangle(bounds,{color:'#fff',weight:0}).addTo(map);
-    map.fitBounds(bounds);
-
-    const stationMarkers = {};
-    stations.forEach((s,i)=>{
-      const lat = -i*100;
-      const lng = i*100;
-      stationMarkers[s]=L.circleMarker([lat,lng],{radius:5,color:'#2c7bcd'}).addTo(map).bindPopup(s);
-    });
-
-    let routeLine = null;
-    function updateMap(path){
-      if(routeLine) map.removeLayer(routeLine);
-      if(!path || path.length<2) return;
-      const latlngs = path.map((s,i)=>{
-        const lat = -stations.indexOf(s)*100;
-        const lng = stations.indexOf(s)*100;
-        return [lat,lng];
-      });
-      routeLine = L.polyline(latlngs,{color:'#ff8c00',weight:3}).addTo(map);
-    }
   </script>
 </body>
 </html>
